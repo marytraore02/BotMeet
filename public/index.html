@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet Recorder Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        #status-container::-webkit-scrollbar { width: 8px; }
+        #status-container::-webkit-scrollbar-track { background: #f1f5f9; }
+        #status-container::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; border: 2px solid #f1f5f9; }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 space-y-6 transform transition-all">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-slate-800">Meet Recorder Bot</h1>
+            <p class="text-slate-900"><h4>(Assurez-vous d'avoir une bonne connexion internet)</h4></p>
+            <p class="text-slate-500 mt-2">Lancez et arrêtez un enregistrement audio de vos réunions.</p>
+        </div>
+
+        <!-- Formulaire de contrôle -->
+        <form id="control-form" class="space-y-4">
+            <div>
+                <label for="meet-link" class="block text-sm font-medium text-slate-700 mb-1">Lien de la réunion Meet</label>
+                <input type="url" id="meet-link" name="meet-link" required
+                       class="block w-full px-4 py-3 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                       placeholder="https://meet.google.com/xxx-yyyy-zzz">
+            </div>
+            <div>
+                <label for="duration" class="block text-sm font-medium text-slate-700 mb-1">Durée de l'enregistrement</label>
+                <div class="flex space-x-2">
+                    <input type="number" id="duration" name="duration" required min="1" step="1" value="30"
+                           class="block w-2/3 px-4 py-3 border border-slate-300 rounded-lg shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    <select id="duration-unit" class="block w-1/3 px-4 py-3 border border-slate-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Heures</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Conteneur pour les boutons -->
+            <div class="flex space-x-4">
+                <button type="submit" id="start-btn"
+                        class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-base font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none">
+                    <svg id="spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="start-button-text">Lancer</span>
+                </button>
+                <button type="button" id="stop-btn"
+                        class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-base font-semibold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform hover:scale-105 disabled:bg-slate-400 disabled:cursor-not-allowed hidden">
+                    Arrêter le processus
+                </button>
+            </div>
+        </form>
+
+        <!-- Section Statut -->
+        <div id="status-section" class="hidden space-y-4">
+            <div id="timer-container" class="hidden text-center p-4 bg-slate-100 rounded-lg">
+                <p class="text-sm font-medium text-slate-500">Temps restant</p>
+                <p id="timer" class="text-4xl font-bold text-slate-800 tracking-wider">00:00:00</p>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-slate-800 mb-2">Journal des événements</h2>
+                <div id="status-container" class="w-full h-48 bg-slate-50 border border-slate-200 rounded-lg p-4 overflow-y-auto text-sm font-mono space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('control-form');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const spinner = document.getElementById('spinner');
+        const startButtonText = document.getElementById('start-button-text');
+        const statusSection = document.getElementById('status-section');
+        const statusContainer = document.getElementById('status-container');
+        const meetLinkInput = document.getElementById('meet-link');
+        const durationInput = document.getElementById('duration');
+        const durationUnitInput = document.getElementById('duration-unit');
+        const timerContainer = document.getElementById('timer-container');
+        const timerDisplay = document.getElementById('timer');
+
+        let timerInterval = null;
+
+        const ws = new WebSocket(`ws://${window.location.hostname}:${window.location.port || 3000}`);
+
+        ws.onopen = () => addStatusMessage('🔌 Connecté au serveur.', 'system');
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            // **CORRECTION** : La logique de gestion des messages est améliorée.
+            switch (data.type) {
+                case 'recording_started':
+                    addStatusMessage(data.message, 'status');
+                    timerContainer.classList.remove('hidden');
+                    startTimer(data.duration);
+                    break;
+                case 'finished': // Seul le message 'finished' réinitialise l'interface.
+                    addStatusMessage(data.message, data.type);
+                    setUiState('idle');
+                    break;
+                case 'error': // Une erreur intermédiaire affiche juste le message sans changer l'état de l'UI.
+                    addStatusMessage(data.message, data.type);
+                    break;
+                default:
+                    addStatusMessage(data.message, data.type);
+            }
+        };
+
+        ws.onclose = () => {
+            addStatusMessage('🔌 Déconnecté du serveur. Veuillez rafraîchir la page.', 'error');
+            setUiState('disconnected');
+        };
+        ws.onerror = () => addStatusMessage('❌ Erreur de connexion au serveur.', 'error');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const durationValue = parseFloat(durationInput.value);
+            const durationUnit = durationUnitInput.value;
+            let durationInHours = durationUnit === 'hours' ? durationValue : durationValue / 60;
+            
+            setUiState('running');
+            clearStatus();
+            statusSection.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/start-recording', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ meetLink: meetLinkInput.value, durationInHours }),
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Une erreur est survenue.');
+                addStatusMessage('✅ Requête de démarrage envoyée. Connexion en cours...', 'success');
+            } catch (error) {
+                addStatusMessage(`❌ Erreur: ${error.message}`, 'error');
+                setUiState('idle');
+            }
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            stopBtn.disabled = true;
+            addStatusMessage('Envoi de la demande d\'arrêt...', 'warning');
+            try {
+                await fetch('/stop-recording', { method: 'POST' });
+            } catch (error) {
+                addStatusMessage(`❌ Erreur lors de la demande d'arrêt: ${error.message}`, 'error');
+                stopBtn.disabled = false;
+            }
+        });
+
+        function setUiState(state) {
+            clearInterval(timerInterval);
+
+            if (state === 'running') {
+                startBtn.disabled = true;
+                spinner.classList.remove('hidden');
+                startButtonText.textContent = 'En cours...';
+                stopBtn.classList.remove('hidden');
+                stopBtn.disabled = false;
+                meetLinkInput.disabled = true;
+                durationInput.disabled = true;
+                durationUnitInput.disabled = true;
+                timerContainer.classList.add('hidden');
+            } else if (state === 'idle') {
+                startBtn.disabled = false;
+                spinner.classList.add('hidden');
+                startButtonText.textContent = 'Lancer';
+                stopBtn.classList.add('hidden');
+                stopBtn.disabled = true;
+                meetLinkInput.disabled = false;
+                durationInput.disabled = false;
+                durationUnitInput.disabled = false;
+                timerContainer.classList.add('hidden');
+            } else if (state === 'disconnected') {
+                startBtn.disabled = true;
+                stopBtn.disabled = true;
+                meetLinkInput.disabled = true;
+                durationInput.disabled = true;
+                durationUnitInput.disabled = true;
+                timerContainer.classList.add('hidden');
+            }
+        }
+
+        function startTimer(duration) {
+            let timer = Math.round(duration);
+            const updateDisplay = () => {
+                let hours = Math.floor(timer / 3600);
+                let minutes = Math.floor((timer % 3600) / 60);
+                let seconds = timer % 60;
+                hours = String(hours).padStart(2, '0');
+                minutes = String(minutes).padStart(2, '0');
+                seconds = String(seconds).padStart(2, '0');
+                timerDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+            };
+            
+            updateDisplay();
+            timerInterval = setInterval(() => {
+                timer--;
+                updateDisplay();
+                if (timer < 0) {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
+        }
+
+        function clearStatus() { statusContainer.innerHTML = ''; }
+        function addStatusMessage(message, type = 'status') {
+            const p = document.createElement('p');
+            const time = new Date().toLocaleTimeString();
+            let colorClass = 'text-slate-600', emoji = 'ℹ️';
+            switch (type) {
+                case 'success': case 'finished': colorClass = 'text-green-600'; emoji = type === 'finished' ? '🎉' : '✅'; break;
+                case 'error': colorClass = 'text-red-600 font-semibold'; emoji = '❌'; break;
+                case 'warning': colorClass = 'text-amber-600'; emoji = '⚠️'; break;
+                case 'system': colorClass = 'text-indigo-600'; emoji = '🔌'; break;
+                case 'status':
+                default:
+                   if (message.includes('🔴')) {
+                       colorClass = 'text-red-500 font-semibold';
+                   }
+                   break;
+            }
+            p.className = `break-words ${colorClass}`;
+            p.innerHTML = `<span class="font-semibold mr-2">[${time}]</span> ${emoji} ${message}`;
+            statusContainer.appendChild(p);
+            statusContainer.scrollTop = statusContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>

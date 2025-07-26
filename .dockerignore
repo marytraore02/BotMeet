@@ -1,0 +1,15 @@
+# Ignorer les dépendances Node.js (elles seront installées dans le conteneur)
+node_modules
+
+# Ignorer les logs de npm
+npm-debug.log
+
+# Ignorer les fichiers de configuration de l'IDE
+.vscode
+.idea
+
+# Ignorer les fichiers système
+.DS_Store
+
+# Ignorer le dossier des enregistrements (on le montera via un volume)
+recordings

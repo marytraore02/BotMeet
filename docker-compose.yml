@@ -1,0 +1,36 @@
+
+# Définition de nos services (notre application)
+services:
+  # Nom de notre service
+  bot:
+    # On indique à Compose de construire l'image à partir du Dockerfile
+    # qui se trouve dans le même dossier (le contexte '.')
+    build: .
+    # Nom de l'image qui sera construite
+    image: meet-bot-app
+    container_name: meet-bot
+    restart: unless-stopped
+    # Augmente la taille de la mémoire partagée, important pour Chrome dans Docker
+    shm_size: '2gb'
+    ports:
+      - "3000:3000"
+    # On lie notre service à un fichier .env pour charger les variables d'environnement
+    env_file:
+      - .env
+
+    # Monte les volumes
+    volumes:
+      # Lie le code source local au conteneur pour un développement facile
+      # Les changements dans votre code local seront reflétés sans reconstruire l'image
+      - ./:/usr/src/app
+
+      # Garde le dossier node_modules installé dans l'image et ne le remplace pas
+      # - /usr/src/app/node_modules
+
+      # Crée un dossier "recordings" sur votre machine locale pour stocker les fichiers audio
+      # Les enregistrements ne seront pas perdus à l'arrêt du conteneur
+      - ./recordings:/usr/src/app/recordings
+
+    # Commande à exécuter au démarrage du conteneur
+    # Lance PulseAudio PUIS votre script Node.js
+    # command: sh -c "pulseaudio --start && index2.js"
