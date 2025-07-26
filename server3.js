@@ -864,7 +864,7 @@ async function runMeetBot(meetLink, durationInHours) {
 
                 // Continuer avec la logique de connexion normale
                 await randomDelay(3000, 6000);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // await new Promise(resolve => setTimeout(resolve, 3000));
                 await handlePopups(page);
                 await new Promise(resolve => setTimeout(resolve, 3000));
                 await handlePopupsDissmiss(page);
@@ -945,12 +945,21 @@ async function runMeetBot(meetLink, durationInHours) {
                 // }
                 // // --- FIN DE LA NOUVELLE LOGIQUE ---
                 
-                await page.waitForSelector(SELECTORS.LEAVE_BUTTON, { timeout: 20000 });
+                await page.waitForSelector(SELECTORS.LEAVE_BUTTON, { timeout: 30000 });
                 broadcast({ type: 'success', message: '✅ Connexion à la réunion réussie !' });
                 connected = true;
 
             } catch (e) {
                 broadcast({ type: 'error', message: `❌ Échec de la tentative ${attempt}: ${e.message.split('\n')[0]}` });
+                
+                const screenshotPath = `recordings/failure_attempt_${attempt}_${Date.now()}.png`;
+                try {
+                    await page.screenshot({ path: screenshotPath, fullPage: true });
+                    broadcast({ type: 'warning', message: `📸 Capture d'écran de l'erreur sauvegardée dans : ${screenshotPath}` });
+                } catch (screenshotError) {
+                    broadcast({ type: 'warning', message: `⚠️ Impossible de prendre une capture d'écran: ${screenshotError.message}` });
+                }
+
                 if (attempt < MAX_RETRIES) {
                     await randomDelay(RETRY_DELAY_MS);
                 } else {

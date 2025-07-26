@@ -30,6 +30,7 @@ FROM node:18-bullseye
 
 # Installer les dépendances système (Puppeteer, FFmpeg, PulseAudio)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    gosu \
     ca-certificates \
     fonts-liberation \
     libasound2 \
@@ -68,6 +69,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils \
     ffmpeg \
     pulseaudio \
+    dbus-x11 \
     && rm -rf /var/lib/apt/lists/*
 
 # --- NOUVELLE ÉTAPE : TÉLÉCHARGER ET INSTALLER GOOGLE CHROME ---
@@ -83,15 +85,26 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
-# Changer l'utilisateur pour 'node' (un utilisateur non-root fourni par l'image de base)
-USER node
+# Copier le reste du code de l'application, y compris le script d'entrée
+COPY . .
 
-# Copier le reste du code de l'application en tant qu'utilisateur 'node'
-COPY --chown=node:node . .
+# Rendre le script d'entrée exécutable
+RUN chmod +x ./entrypoint.sh
+
+# # Changer l'utilisateur pour 'node' (un utilisateur non-root fourni par l'image de base)
+# USER node
+
+# # Copier le reste du code de l'application en tant qu'utilisateur 'node'
+# COPY --chown=node:node . .
 
 # Exposer le port que le serveur utilise
 EXPOSE 3000
 
-# La commande pour démarrer l'application.
-CMD ["/bin/sh", "-c", "mkdir -p ~/.config/pulse && echo 'load-module module-null-sink sink_name=virtual_sink' > ~/.config/pulse/default.pa && pulseaudio --start --exit-idle-time=-1 && exec node server3.js"]
+ENTRYPOINT ["./entrypoint.sh"]
+# # La commande pour démarrer l'application.
+# CMD ["/bin/sh", "-c", "mkdir -p ~/.config/pulse && echo 'load-module module-null-sink sink_name=virtual_sink' > ~/.config/pulse/default.pa && pulseaudio --start --exit-idle-time=-1 && exec node server3.js"]
 
+# CMD ["/bin/sh", "-c", "mkdir -p ~/.config/pulse && echo 'load-module module-null-sink sink_name=virtual_sink' > ~/.config/pulse/default.pa && pulseaudio --start --exit-idle-time=-1 && sleep 2 && exec node server3.js"]
+
+
+# CMD ["/bin/sh", "-c", "mkdir -p ~/.config/pulse && echo 'load-module module-null-sink sink_name=virtual_sink' > ~/.config/pulse/default.pa && pulseaudio --start --exit-idle-time=-1 && until pactl info; do echo 'Waiting for PulseAudio to start...'; sleep 1; done && echo 'PulseAudio is ready.' && exec node server3.js"]
