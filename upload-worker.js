@@ -73,7 +73,7 @@ async function uploadWithRetries(filePath, retries = 3, delay = 5000) {
             form.append('audio_file', fs.createReadStream(filePath));
             
             // REMPLACEZ CETTE URL PAR L'ENDPOINT DE VOTRE API D'UPLOAD
-            const uploadUrl = 'http://127.0.0.1:8000/process_audio/'; 
+            const uploadUrl = 'http://host.docker.internal:8000/process_audio/'; 
 
             const response = await axios.post(uploadUrl, form, {
                 headers: {

@@ -117,13 +117,14 @@ let activeProcess = {
 
         this.filePath = null;
 
-        setTimeout(() => {
-            wss.close();
-            server.close(() => {
-                console.log('Serveur arrêté. Le processus va se terminer.');
-                process.exit(0);
-            });
-        }, 2000);
+        // // Arrêter complètement le serveur
+        // setTimeout(() => {
+        //     wss.close();
+        //     server.close(() => {
+        //         console.log('Serveur arrêté. Le processus va se terminer.');
+        //         process.exit(0);
+        //     });
+        // }, 2000);
     }
 };
 
@@ -864,9 +865,9 @@ async function runMeetBot(meetLink, durationInHours) {
 
                 // Continuer avec la logique de connexion normale
                 await randomDelay(3000, 6000);
-                // await new Promise(resolve => setTimeout(resolve, 3000));
-                await handlePopups(page);
                 await new Promise(resolve => setTimeout(resolve, 3000));
+                await handlePopups(page);
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 await handlePopupsDissmiss(page);
 
                 // Désactiver micro/caméra avec délais aléatoires
